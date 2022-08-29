@@ -1,8 +1,11 @@
-const express = require("express");
 const cors = require("cors");
 const db = require("./app/models");
 
+const express = require('express');
 const app = express();
+const server = require('http').createServer(app);
+module.exports.io = io = require('socket.io')(server);
+
 var corsOptions = {
     origin: "http://localhost:8081"
 };
@@ -22,11 +25,13 @@ db.sequelize.sync()
 
 // simple route
 app.get("/", (req, res) => {
-    res.json({ message: "Welcome to CJM application." });
+    res.send({message: toilet});
 });
+
 require("./app/routes/toilet.routes")(app);
+
 // set port, listen for requests
 const PORT = 8080;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}.`);
 });
