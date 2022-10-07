@@ -13,8 +13,8 @@
 Configure db setting in ./app/config/db.config.js
 
 ## Use API
-http request in **ip/PORT/api/toilets/`command`**  
-`command` is reference ./app/routes/toilet.routes/js
+http request in **ip:PORT/api/toilets/`command`**  
+`command` is reference ./app/routes/toilet.routes.js
 
 API function is in ./app/controller.js  
 #

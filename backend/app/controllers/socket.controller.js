@@ -1,5 +1,5 @@
-module.exports = function(io, msg) {
-    io.on('connection',(socket) => {
-        socket.emit('create', msg);
-    });
+const socket = require('../../server').socket;
+
+exports.socket_create = (msg) => {
+    socket.emit('create', msg);
 }

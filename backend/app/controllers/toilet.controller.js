@@ -1,45 +1,51 @@
-const db = require("../models");
+const db = require('../models');
+// const Socket = require('../controllers/socket.controller');
+const Socket = require('../../server');
 const Toilet = db.toilets;
 const Op = db.Sequelize.Op;
 
-var msg;
-
 // Create and Save a new paperdb
 exports.create = (req, res) => {
-  const toilet = {
+  const toilet_data = {
     number: req.body.number,
     valid: req.body.valid,
     published: req.body.published ? req.body.published : false
   }
+
   // Validate request
-  if (!toilet.number) {
-    res.status(400).send({
+  if (!toilet_data.number) {
+    return res.status(400).send({
       message: "number can not be empty!"
     });
-    return
   }
+
   // Create paperdb
-  Toilet.create(toilet)
-  // request data from DB and send data using socket.io
+  Toilet(toilet_data)
+    // request data from DB and send data using socket.io
     .then((data) => {
-      msg = data;
-      const socket = require('./socket.controller')(require('../../server').io, msg);
-      socket;
+      Socket.socket_create(data);
       res.send(data);
+      return;
     })
     .catch((err) => {
-      res.status(500).send({
+      return res.status(500).send({
         message: (err.message) || "Some error occurred while creating the paperdb."
       });
     });
+
+
 };
+
 // Retrieve all paperdb from the database.
 exports.findAll = (req, res) => {
   const number = req.query.number;
   var condition = number ? { number: { [Op.iLike]: `%${number}%` } } : null;
+
   Toilet.findAll({ where: condition })
     .then((data) => {
-      res.send(data)
+      Socket.socket_findAll(data);
+      res.send(data);
+      return;
     })
     .catch((err) => {
       res.status(500).send({
@@ -49,25 +55,30 @@ exports.findAll = (req, res) => {
       });
     });
 };
+
 // Find a single paperdb with an id
 exports.findOne = (req, res) => {
-  const id = req.params.id;
+  const id = req.body.id;
+
   Toilet.findByPk(id)
     .then((data) => {
       if (data) {
-        res.send(data);
+        Socket.socket_findOne(id);
+        res.send(id);
+        return;
       } else {
-        res.status(404).send({
+        return res.status(404).send({
           message: `Cannot find paperdb with id=${id}.`
         });
       }
     })
     .catch((err) => {
-      res.status(500).send({
-        message: "Error retrieving paperdb with id=" + id
+      return res.status(500).send({
+        message: `Error retrieving paperdb with id=${id}.`
       });
     });
 };
+
 // Update a paperdb by the id in the request
 exports.update = (req, res) => {
   const number = req.body.number;
@@ -78,82 +89,85 @@ exports.update = (req, res) => {
     Toilet.update(req.body, {
       where: { number: number }
     })
-      .then(
-        res.send({
-          message: `Update ${number}s validate!`
-        })
-      )
+      .then((data) => {
+        Socket.socket_update(number);
+        res.send(number)
+        return;
+      })
+      .catch(err => {
+        res.status(500).send({
+          message: "Error updating paperdb with number=" + number
+        });
+      })
   }
-  Toilet.update(req.body, {
-    where: { number: number }
-  })
-    .then(async num => {
-      if (num == 1) {
-        res.send({
-          message: "paperdb was updated successfully."
-        });
-        await io.emit("realtime", req);
-      } else {
-        res.send({
-          message: `Cannot update paperdb with number=${number}. Maybe paperdb was not found or req.body is empty!`
-        });
-      }
-    })
-    .catch(err => {
-      res.status(500).send({
-        message: "Error updating paperdb with number=" + number
-      });
-    });
+
+  // }
+
+  // Toilet.update(req.body, {
+  //   where: { number: number }
+  // })
+  //   .then(async num => {
+  //     if (num == 1) {
+  //       res.send({
+  //         message: "paperdb was updated successfully."
+  //       });
+  //     } else {
+  //       res.send({
+  //         message: `Cannot update paperdb with number=${number}. Maybe paperdb was not found or req.body is empty!`
+  //       });
+  //     }
+  //   })
+  //   .catch(err => {
+  //     res.status(500).send({
+  //       message: "Error updating paperdb with number=" + number
+  //     });
+  //   });
 };
+
 // Delete a paperdb with the specified id in the request
 exports.delete = (req, res) => {
   const number = req.body.number;
+
   Toilet.destroy({
     where: { number: number }
   })
-    .then(num => {
-      if (num == 1) {
-        res.send({
-          message: `${number} in paperdb was deleted successfully!`
-        });
-      } else {
-        res.send({
-          message: `Cannot delete paperdb with number=${number}. Maybe paperdb was not found!`
-        });
-      }
+    .then((data) => {
+      Socket.socket_delete(number);
+      res.send({ message: `${number} in paperdb was deleted successfully!` });
+      return;
     })
-    .catch(err => {
+    .catch((err) => {
       res.status(500).send({
         message: "Could not delete paperdb with number=" + number
       });
     });
 };
+
 // Delete all paperdb from the database.
-exports.deleteAll = (req, res) => {
-  Toilet.destroy({
-    where: {},
-    truncate: false
-  })
-    .then(nums => {
-      res.send({ message: `${nums} paperdb were deleted successfully!` });
-    })
-    .catch(err => {
-      res.status(500).send({
-        message:
-          err.message || "Some error occurred while removing all paperdb."
-      });
-    });
-};
+// exports.deleteAll = (req, res) => {
+//   Toilet.destroy({
+//     where: {},
+//     truncate: false
+//   })
+//     .then(nums => {
+//       res.send({ message: `${nums} paperdb were deleted successfully!` });
+//     })
+//     .catch(err => {
+//       res.status(500).send({
+//         message:
+//           err.message || "Some error occurred while removing all paperdb."
+//       });
+//     });
+// };
+
 // Find all published paperdb
 exports.findAllPublished = (req, res) => {
   Toilet.findAll({ where: { published: true } })
-    .then(data => {
+    .then((data) => {
+      Socket.socket_findAllPublished(data);
       res.send(data);
     })
-    .catch(err => {
-      res.status(500).send({
-        message:
-          err.message || "Some error occurred while retrieving paperdb."
-      });
+    .catch((err) => {
+      res.status(500).send({ message: err.message || "Some error occurred while retrieving paperdb." });
     });
 };
